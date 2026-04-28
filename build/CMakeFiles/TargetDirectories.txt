@@ -1,0 +1,3 @@
+/home/todd/gw2-meta-train/build/CMakeFiles/MetaTrain.dir
+/home/todd/gw2-meta-train/build/CMakeFiles/edit_cache.dir
+/home/todd/gw2-meta-train/build/CMakeFiles/rebuild_cache.dir

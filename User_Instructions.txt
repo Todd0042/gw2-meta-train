@@ -1,0 +1,289 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  META TRAIN COMMANDER  —  User Instructions
+  A Nexus addon for Guild Wars 2 Meta Train commanders
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OVERVIEW
+────────
+Meta Train Commander is a Nexus overlay addon that helps commanders lead the
+GW2 Meta Train loop. It tracks 35 events — the 27 core Meta Train metas plus
+8 world boss fill events — and shows you live countdowns to the current and
+next event, lights up a waypoint copy button at the right moment, can send or
+copy your /d squad announcements automatically, alerts you when the train is
+ready to move, shows break windows between events, and lets you plan a future
+run with the Schedule a Run planner.
+
+[F] markers in the event list indicate world boss fill events. These are
+optional stops the squad can do between major metas to keep the group together
+and avoid long waits.
+
+
+INSTALLATION
+────────────
+1. Ensure you have the Nexus overlay installed and running.
+   Download Nexus: https://raidcore.gg/Nexus
+
+2. Copy MetaTrain.dll into your addons folder:
+     C:\Program Files\Guild Wars 2\addons\MetaTrain.dll
+
+3. Launch Guild Wars 2. Nexus will load the addon automatically.
+   You should see "Meta Train Commander" appear in your Nexus addon list.
+
+4. The window opens automatically. If you close it, re-open it from the
+   Nexus addon panel or by clicking the MetaTrain entry in the Nexus menu.
+
+
+THE META TRAIN EVENT ORDER  (35 events)
+────────────────────────────────────────
+Events marked [F] are world boss fill events — optional but recommended to
+keep the squad occupied during breaks between major metas.
+
+ 1  Breaking the Claw of Jormag          Frostgorge Sound       (Core)
+ 2  Svanir Shaman Chief            [F]   Wayfarer Foothills     (Core)
+ 3  Tequatl the Sunless                  Sparkfly Fen           (Core)
+ 4  Great Jungle Wurm              [F]   Caledon Forest         (Core)
+ 5  Karka Queen                          Southsun Cove          (Core)
+ 6  Megadestroyer                  [F]   Mount Maelstrom        (Core)
+ 7  Triple Trouble                       Bloodtide Coast        (Core)
+ 8  The Shatterer                  [F]   Blazeridge Steppes     (Core)
+ 9  Twisted Marionette                   Eye of the North       (Core)
+10  Fire Elemental                 [F]   Metrica Province       (Core)
+11  Night and the Enemy                  Verdant Brink          (HoT)
+12  Battle in Tarir                      Auric Basin            (HoT)
+13  Chak Gerent                          Tangled Depths         (HoT)
+14  Ley-Line Anomaly                     Rotating (3 maps)      (Core)
+15  Choya Pinata                         Crystal Oasis          (PoF)
+16  The Path to Ascension                Elon Riverlands        (PoF)
+17  Junundu Rising                       The Desolation         (PoF)
+18  Maws of Torment                [F]   The Desolation         (PoF)
+19  Forged with Fire                     Domain of Vabbi        (PoF)
+20  Serpents' Ire                  [F]   Domain of Vabbi        (PoF)
+21  Palawadan, Jewel of Istan            Domain of Istan        (PoF)
+22  Death-Branded Shatterer              Jahai Bluffs           (PoF)
+23  The Oil Floes                        Sandswept Isles        (PoF)
+24  Flame Legion Effigy                  Grothmar Valley        (IBS)
+25  Doomlore Shrine                      Grothmar Valley        (IBS)
+26  Ooze Pits                            Grothmar Valley        (IBS)
+27  Shadow Behemoth                [F]   Queensdale             (Core)
+28  Drakkar                              Bjora Marches          (IBS)
+29  Dragonstorm                          Eye of the North       (IBS)
+30  Adolescent Leviathan                 New Kaineng City       (EoD)
+31  Aetherblade Assault                  Seitung Province       (EoD)
+32  Kaineng Blackout                     New Kaineng City       (EoD)
+33  Assault on Fort Aspenwood            Echovald Wilds         (EoD)
+34  The Gang War of Echovald             Echovald Wilds         (EoD)
+35  The Battle for the Jade Sea          Dragon's End           (EoD)
+
+
+STARTING THE LOOP
+─────────────────
+1. When you arrive at your first event (or when you are ready to begin),
+   use the dropdown in the addon window to select that event.
+
+2. Click "Start Here".
+
+The addon will mark that event as your loop start and begin tracking your
+progress through all 35 events from that point.
+
+To jump to a different event at any time, select it from the dropdown and
+click "Start Here" again. Use the "< Prev" and "Next >" buttons to step
+back or forward one event manually.
+
+
+READING THE WINDOW
+──────────────────
+Title bar
+  Shows the addon icon, the addon name, and the current UTC clock (top-right).
+
+Loop progress bar  (appears after you click Start Here)
+  A purple bar showing how many events you have completed, and a countdown
+  to when the full loop is estimated to finish.
+
+NOW panel  (current event, color-coded by expansion era)
+  ● Green progress bar and "IN PROGRESS" — the event is currently running.
+    Shows time remaining and "~N min max" for the event's maximum duration.
+  ● Yellow "Starts in X:XX" — the event has not started yet.
+  ● [ Finish Event → ] button — click this if the event ends early or your
+    squad is ready to move before the maximum duration expires. Advances the
+    loop immediately without waiting for the natural timer.
+
+BREAK indicator  (orange bar, only shown when gap > 5 minutes)
+  Appears between NOW and NEXT when there is a break of more than 5 minutes
+  before the next event. Shows how long the break lasts.
+
+READY TO MOVE banner  (cyan, only shown during an active loop)
+  Appears when all of these are true:
+    ● You are in an active loop (clicked Start Here)
+    ● You have been on the current map for at least 15 minutes
+    ● The next event is not yet in its travel window
+  This is a prompt to check whether the squad is ready to head to the next
+  event. The banner shows how long until the next scheduled move.
+  You can disable this banner in Settings (see below).
+
+NEXT panel  (next event in your loop)
+  Countdown changes color as the event approaches:
+    Teal   — more than 30 minutes away
+    Yellow — within 30 minutes
+    Orange — within 15 minutes
+    Red    — within 5 minutes  ← head there now!
+
+  "Move in: X:XX" — how long until you should start travelling.
+  "▶ HEAD THERE NOW!" — appears when it is time to move.
+
+Waypoint and Message buttons  (unlock when it is time to move)
+  [ Copy WP [&XXXX=] ]  — copies the waypoint chat link to your clipboard.
+                          Paste it in GW2 chat to share the portal.
+  [ Copy /d Msg ]        — copies the full /d squad announcement to clipboard.
+  [ Send /d Now ]        — opens GW2 chat, pastes and sends the /d message
+                          automatically (GW2 must be your focused window).
+                          Falls back to clipboard copy if GW2 is not in focus.
+
+  For Ley-Line Anomaly, three waypoint buttons appear (one per rotating map).
+  Check which map is active and copy the correct one.
+
+Upcoming events list
+  The next 6 events in your loop, with their UTC start times and countdowns.
+  Break windows longer than 5 minutes are shown in orange between entries.
+
+
+CONTROLS
+────────
+< Prev / Next >
+  Step the loop back or forward one event manually. Use this if you skipped
+  an event or the auto-advance did not trigger.
+
+Finish Event →
+  Advances the loop by one event immediately. Use this when an event ends
+  early or when your squad is ready to move before the event's maximum
+  duration expires. Has no effect if no loop is active.
+
+Auto-Announce checkbox
+  When checked, the addon automatically fires the /d squad message for the
+  next event when it reaches the "time to announce" threshold (a few minutes
+  before the event).
+  ● If GW2 is in focus: the message is pasted and sent automatically.
+  ● If GW2 is not in focus: the message is copied to your clipboard instead,
+    and a toast notification tells you to paste it.
+
+Auto-Advance checkbox
+  When checked, the loop counter advances automatically whenever you enter
+  the map of the next event. Useful during the run so you do not have to
+  click Next > manually after every event.
+  Note: Grothmar Valley hosts three consecutive events (24 Flame Legion Effigy,
+  25 Doomlore Shrine, 26 Ooze Pits). Because they share one map, the addon
+  will not auto-advance between those three phases — advance manually with
+  Next > or Finish Event → as each phase completes.
+
+
+SCHEDULE A RUN
+──────────────
+Use this to plan a future run and see the projected event schedule.
+
+1. Check the "Schedule a Run" checkbox to expand the planner panel.
+2. Set "Days from today" (0 = today, 1 = tomorrow, up to 21 days out).
+   The corresponding date is shown next to the field (e.g. "Wed May 07").
+3. Set the UTC hour and minute you plan to start.
+4. Select the starting event from the "Starting event" dropdown.
+5. The full 35-event schedule is calculated and displayed instantly, showing:
+   ● Event name (color-coded by expansion)
+   ● Projected UTC start time
+   ● Approximate duration
+   ● Break windows between events
+   ● A small [WP] button to copy the waypoint for any event
+   ● Total run time at the bottom
+
+All times are in UTC. Guild Wars 2 uses UTC for all event scheduling.
+
+The planner looks up to 21 days ahead — typical for community-organised runs.
+
+
+SETTINGS
+────────
+Open the Nexus addon settings panel and select Meta Train Commander to access:
+
+  Auto-Announce squad messages
+    Same as the in-window checkbox. Fires /d automatically at prep time.
+
+  Auto-advance loop on map change
+    Same as the in-window checkbox. Advances when you enter the next map.
+
+  Show "Ready to Move?" notifications
+    Toggles the cyan Ready to Move banner on or off. Uncheck this if you
+    find the notification distracting or manage movement timing yourself.
+
+Your preferences are saved automatically to:
+  C:\Program Files\Guild Wars 2\addons\MetaTrain\MetaTrain.ini
+
+This file is plain text. You can open it in Notepad to inspect or reset values.
+
+
+EXPANSION ERA COLOURS
+──────────────────────
+Event headers are tinted by expansion to help you quickly identify which
+content each event belongs to:
+
+  Blue-grey  — Core Tyria (including Living World seasons 1–3)
+  Green      — Heart of Thorns
+  Gold       — Path of Fire (including Living World season 4)
+  Ice blue   — Icebrood Saga
+  Teal       — End of Dragons
+
+
+KNOWN LIMITATIONS
+─────────────────
+● Waypoint codes: A portion of waypoints are community-sourced best-guess
+  values. If a WP is wrong, the correct code can be updated in src/events.cpp
+  and the DLL rebuilt. Always verify in-game before a live run.
+
+● Map IDs: Some map IDs are best-guess values. If Auto-Advance does not
+  trigger for a particular event, the map ID in src/events.cpp may need
+  correcting. Verify with https://api.guildwars2.com/v2/maps/<id>
+
+● "Send /d Now" requires GW2 to be your foreground window at the moment
+  of the button press. The addon cannot send keystrokes to a minimised
+  or background GW2 window.
+
+● Ley-Line Anomaly rotates between three maps on a weekly cycle. The
+  addon shows all three waypoints and you pick the active one manually.
+
+● Grothmar Valley phases (24 Flame Legion Effigy, 25 Doomlore Shrine,
+  26 Ooze Pits) share one map. Auto-Advance will trigger on entry to
+  Grothmar but will not distinguish between the three phases. Use
+  Next > or Finish Event → to advance between them manually.
+
+● World boss fill events [F] have independent 2- or 3-hour schedules and
+  are not always perfectly synchronized with the main meta schedule. The
+  addon shows the next occurrence of each fill event; if the gap is very
+  short, your squad may choose to skip it and head directly to the next meta.
+
+
+TIPS FOR COMMANDERS
+───────────────────
+● Open the addon before the run starts and use "Schedule a Run" to
+  brief your squad on the projected event times for the whole loop.
+
+● Enable Auto-Announce before the run begins so squad messages go out
+  without you having to remember to type them mid-event.
+
+● The waypoint button unlocks once the current event has started (not
+  before), so the WP is ready to share at exactly the right moment.
+
+● Use Finish Event → whenever the event wraps up early — it immediately
+  starts counting down to the next event rather than waiting for the
+  maximum duration timer to expire.
+
+● If the Ready to Move banner appears and your squad is ready, use it as
+  your cue to call the move in squad chat before pressing Next >.
+
+● If you need to skip an event or the squad decides to start somewhere
+  else mid-run, just pick the new event from the dropdown and click
+  "Start Here" — the loop resets from that point.
+
+● Fill events [F] are great for keeping the squad together during long
+  breaks. They happen on regular 2- or 3-hour cycles at diverse offsets,
+  so there is almost always one available within 5–30 minutes of any
+  major meta completing.
+
+● All countdowns update every render frame — no need to refresh.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
