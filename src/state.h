@@ -2,73 +2,101 @@
 #include <ctime>
 #include <cstdint>
 #include <string>
-#include <mutex>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include "events.h"
+
+// RAII wrapper for CRITICAL_SECTION — drop-in replacement for std::lock_guard
+struct CritLock {
+    CRITICAL_SECTION* _cs;
+    explicit CritLock(CRITICAL_SECTION* cs) : _cs(cs) { EnterCriticalSection(_cs); }
+    ~CritLock() { LeaveCriticalSection(_cs); }
+    CritLock(const CritLock&) = delete;
+    CritLock& operator=(const CritLock&) = delete;
+};
 
 // ── persistent settings (saved to MetaTrain.ini) ──────────────────────────
 struct Settings {
     bool   autoAnnounce;      // send /d message automatically at prepMinutes
     bool   autoAdvanceOnMap;  // advance loop when player enters event map
-    int    startIdx;          // last manually selected start position [0..26]
+    int    startIdx;          // last manually selected start position
+};
+
+// ── named saved run ───────────────────────────────────────────────────────
+static const int MAX_SAVED_RUNS = 8;
+
+struct SavedRun {
+    char name[32];
+    int  plan[MAX_LOOP_PLAN];
+    int  count;                // 0 = slot unused
 };
 
 // ── runtime addon state ───────────────────────────────────────────────────
 struct AddonState {
     // Loop tracking
-    int     currentIdx;       // which event we are currently at or heading to [0..26]
-    int     loopStartIdx;     // event where the user started this loop
-    time_t  loopStartTime;    // wall-clock when user hit "Start Loop Here"
-    bool    loopActive;       // false = idle / just opened
+    int     currentIdx;       // index into g_Metas[] for the current event
+    int     loopStartIdx;     // g_Metas[] index where the user started this loop
+    time_t  loopStartTime;    // wall-clock when user hit "Start"
+    bool    loopActive;       // false = idle / plan being built
+
+    // Custom run plan (indices into g_Metas[])
+    int     loopPlan[MAX_LOOP_PLAN];
+    int     loopPlanCount;    // 0 = no plan built
+    int     loopPlanPos;      // current position in the plan
+
+    // Named saved runs
+    SavedRun savedRuns[MAX_SAVED_RUNS];
+    int      savedRunsCount;  // number of occupied slots
+    int      savedRunsSel;    // dropdown selection index (0-based)
+    char     saveNameBuf[32]; // text input buffer for naming a new save
 
     // Map presence
     uint32_t currentMapId;
 
     // Waypoint button
-    // Becomes unlocked once the PREVIOUS event's UTC start time has passed,
-    // so the commander can share the WP while the current event is still running.
     bool waypointUnlocked;
 
     // Auto-announce gate — resets when currentIdx advances
-    bool     announceFired;   // true once the auto-announce fired for this event
+    bool     announceFired;
     time_t   lastAnnounceTime;
 
-    // Toast notification banner (ImGui overlay inside our window)
+    // Toast notification banner
     std::string toastText;
-    float       toastAlpha;   // counts down from 1.0 to 0.0 over ~3 s
+    float       toastAlpha;
 
-    // ImGui one-time init flag (§1 Lessons_Learned)
+    // ImGui one-time init flag
     bool imguiReady;
 
     // Window open state
     bool windowOpen;
 
     // ── Schedule-a-Run planner ─────────────────────────────────────────
-    // Commander picks days-from-today (0-21), hour, minute to preview
-    // a full loop schedule.  Year/month are derived from today's UTC date.
-    bool   showSchedule;         // whether the schedule panel is open
-    int    schedStartIdx;        // which event the planned run begins at
-    int    schedDaysOffset;      // 0 = today, 1 = tomorrow … max 21
-    int    schedHour;            // 0..23  UTC
-    int    schedMinute;          // 0..59  UTC
-    bool   schedDirty;           // recalculate when true
+    bool   showSchedule;
+    int    schedStartIdx;
+    int    schedDaysOffset;
+    int    schedHour;
+    int    schedMinute;
+    bool   schedDirty;
 
     // ── "Ready to move?" popup ─────────────────────────────────────────
-    bool   moveNotifyEnabled;    // toggle in settings
-    time_t mapEntryTime;         // UTC epoch when player last entered a map
+    bool   moveNotifyEnabled;
+    time_t mapEntryTime;
 
     Settings cfg;
 };
 
-extern AddonState  g_State;
-extern std::mutex  g_StateMutex; // guards g_State
+extern AddonState        g_State;
+extern CRITICAL_SECTION  g_StateMutex;
 
 void StateInit();
 void StateSave(const char* addonDir);
 void StateLoad(const char* addonDir);
 
-// Thread-safe helper: advance the loop by one position
 void StateAdvance();
-// Thread-safe helper: set current position without changing loopStartIdx
 void StateSetCurrent(int idx);
-
-// Show a toast notification that fades out automatically
 void StateToast(const char* msg);

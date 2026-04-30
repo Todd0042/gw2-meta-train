@@ -24,15 +24,12 @@ CMakeFiles/MetaTrain.dir/src/events.cpp.obj: \
  /usr/x86_64-w64-mingw32/include/stdint.h \
  /usr/lib/gcc/x86_64-w64-mingw32/15.2.0/include/stddef.h \
  /usr/x86_64-w64-mingw32/include/stddef.h \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/cstring \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/version.h \
- /usr/x86_64-w64-mingw32/include/string.h \
- /usr/x86_64-w64-mingw32/include/sec_api/string_s.h \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/algorithm \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/stl_algobase.h \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/functexcept.h \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/exception_defines.h \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/cpp_type_traits.h \
+ /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/version.h \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/type_traits \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/ext/type_traits.h \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/ext/numeric_traits.h \

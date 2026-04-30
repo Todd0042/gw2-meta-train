@@ -317,26 +317,6 @@ CMakeFiles/MetaTrain.dir/src/ui.cpp.obj: \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/uses_allocator.h \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/uses_allocator_args.h \
  /usr/x86_64-w64-mingw32/include/c++/15.2.0/tuple \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/mutex \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/chrono.h \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/ratio \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/limits \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/parse_numbers.h \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/std_mutex.h \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/x86_64-w64-mingw32/bits/gthr.h \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/x86_64-w64-mingw32/bits/gthr-default.h \
- /usr/x86_64-w64-mingw32/include/pthread.h \
- /usr/x86_64-w64-mingw32/include/sys/types.h \
- /usr/x86_64-w64-mingw32/include/process.h \
- /usr/x86_64-w64-mingw32/include/corecrt_startup.h \
- /usr/x86_64-w64-mingw32/include/signal.h \
- /usr/x86_64-w64-mingw32/include/pthread_signal.h \
- /usr/x86_64-w64-mingw32/include/sched.h \
- /usr/x86_64-w64-mingw32/include/pthread_unistd.h \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/bits/unique_lock.h \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/x86_64-w64-mingw32/bits/error_constants.h \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/ext/atomicity.h \
- /usr/x86_64-w64-mingw32/include/c++/15.2.0/x86_64-w64-mingw32/bits/atomic_word.h \
  /home/todd/gw2-meta-train/src/chat.h \
  /home/todd/gw2-meta-train/src/icon_png.h \
  /home/todd/gw2-meta-train/imgui/imgui.h \

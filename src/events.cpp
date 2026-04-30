@@ -1,501 +1,335 @@
 #include "events.h"
-#include <cstring>
 #include <algorithm>
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  MAP IDs — verify via https://api.guildwars2.com/v2/maps/{id}
-//  Confirmed (§30): Verdant Brink=1042, Auric Basin=1043, Tangled Depths=1045
-// ═════════════════════════════════════════════════════════════════════════════
-static constexpr uint32_t MAP_FROSTGORGE      = 227;   // verify
-static constexpr uint32_t MAP_WAYFARER        = 18;    // verify (Svanir Shaman Chief)
-static constexpr uint32_t MAP_SPARKFLY        = 53;    // verify (Tequatl)
-static constexpr uint32_t MAP_CALEDON         = 34;    // verify (Great Jungle Wurm)
-static constexpr uint32_t MAP_SOUTHSUN        = 873;   // verify (Karka Queen)
-static constexpr uint32_t MAP_MAELSTROM       = 27;    // verify (Megadestroyer)
-static constexpr uint32_t MAP_BLOODTIDE       = 50;    // verify (Triple Trouble)
-static constexpr uint32_t MAP_BLAZERIDGE      = 17;    // verify (The Shatterer)
-static constexpr uint32_t MAP_EYE_NORTH       = 1346;  // verify (Twisted Marionette / Dragonstorm)
-static constexpr uint32_t MAP_METRICA         = 39;    // verify (Fire Elemental)
-static constexpr uint32_t MAP_VERDANT         = 1042;  // confirmed §30
-static constexpr uint32_t MAP_AURIC           = 1043;  // confirmed §30
-static constexpr uint32_t MAP_TANGLED         = 1045;  // confirmed §30
-static constexpr uint32_t MAP_TIMBERLINE      = 250;   // verify (Ley-Line rotation 1)
-static constexpr uint32_t MAP_IRON_MARCHES    = 15;    // verify (Ley-Line rotation 2)
-static constexpr uint32_t MAP_GENDARRAN       = 112;   // verify (Ley-Line rotation 3)
-static constexpr uint32_t MAP_VABBI           = 1248;  // verify (Crystal Oasis / Vabbi)
-static constexpr uint32_t MAP_ELON            = 1210;  // verify (Elon Riverlands)
-static constexpr uint32_t MAP_DESOLATION      = 1235;  // verify (The Desolation)
-static constexpr uint32_t MAP_ISTAN           = 1268;  // verify (Domain of Istan)
-static constexpr uint32_t MAP_JAHAI           = 1271;  // verify (Jahai Bluffs)
-static constexpr uint32_t MAP_SANDSWEPT       = 1301;  // verify (Sandswept Isles)
-static constexpr uint32_t MAP_GROTHMAR        = 1343;  // verify (Grothmar Valley)
-static constexpr uint32_t MAP_QUEENSDALE      = 15;    // verify (Shadow Behemoth) — same as MAP_IRON_MARCHES value; both need verification
-static constexpr uint32_t MAP_BJORA           = 1371;  // verify (Bjora Marches)
-static constexpr uint32_t MAP_SEITUNG         = 1428;  // verify (Seitung Province)
-static constexpr uint32_t MAP_NEW_KAINENG     = 1422;  // verify (New Kaineng City)
-static constexpr uint32_t MAP_ECHOVALD        = 1432;  // verify (Echovald Wilds)
-static constexpr uint32_t MAP_DRAGONS_END     = 1438;  // verify (Dragon's End)
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  WAYPOINT CODES — sourced from events.json (Snipppppy/GW2-Simple-Timer)
-//  Confirmed in events.json:  [C]  Confirmed community/events.json.
-//  TODO: verify all in-game and update if any differ.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  EVENT TABLE  (35 events: 27 original + 8 world-boss fill events [F])
+// Map IDs verified via https://api.guildwars2.com/v2/maps
+// Timings verified against https://wiki.guildwars2.com/wiki/World_boss_timer
+// and community event schedule sources.
 //
-//  Timing corrections vs. prior version (source: events.json §30):
-//   • Claw of Jormag   offset 150 (2:30 UTC) not 30
-//   • Karka Queen      irregular times updated
-//   • Triple Trouble   irregular times updated
-//   • Night/Enemy      offset 10 (0:10 UTC) — verify in-game
-//   • Path/Ascension   offset 90 (1:30 UTC) not 0
-//   • Palawadan        offset 105 (1:45 UTC) not 0
-//   • Oil Floes        offset 45 (0:45 UTC) not 0
-//   • Flame Effigy     offset 10 not 0
-//   • Doomlore         offset 40 not 15
-//   • Ooze Pits        offset 65 (1:05 UTC) not 30
-//   • Drakkar          offset 80 (1:20 UTC) not 90
-//   • Aetherblade      offset 90 (1:30 UTC) not 0
-//   • Aspenwood        offset 100 (1:40 UTC) not 60
-//   • Gang War         offset 30 not 0
-//   • Many WP codes updated from events.json
-// ═════════════════════════════════════════════════════════════════════════════
-static MetaEvent s_Events[META_EVENT_COUNT];
+// IMPORTANT: offset = minutes from UTC midnight at which the cycle phase-aligns.
+// The event_tracks.json source has a systematic +60 min bias for all 120-min cycle
+// events and must NOT be used directly for offsets.
 
-const MetaEvent* g_Events = s_Events;
+// ── Irregular daily schedules (minutes from UTC midnight) ─────────────────────
+static const int s_tequatlTimes[]    = { 0, 180, 420, 690,  960, 1140, 0, 0 };
+static const int s_tripleTimes[]     = { 60, 240, 480, 750, 1020, 1200, 0, 0 };
+static const int s_karkaQueenTimes[] = { 120, 360, 630, 900, 1080, 1380, 0, 0 };
 
-void EventsInit()
-{
-    // ── 1 — Breaking the Claw of Jormag ──────────────────────────────────────
-    // 3h cycle; first start 2:30 UTC → 2:30, 5:30, 8:30… (events.json confirmed)
-    s_Events[0] = {
-        1, "Breaking the Claw of Jormag",
-        {MAP_FROSTGORGE, 0u, 0u}, 1,
-        {"[&BH0CAAA=]", nullptr, nullptr},
-        "Claw of Jormag \xc2\xbb WP [&BH0CAAA=] | Frostgorge Sound!",
-        20, 10,
-        SchedMode::Uniform, 180, 150,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+// ── World Boss table ──────────────────────────────────────────────────────────
+MetaEvent g_WorldBosses[] = {
+    // ── 2-hour cycle ──────────────────────────────────────────────────────────
+    { "Svanir Shaman Chief", "Wayfarer Foothills", 28,
+      "[&BMIDAAA=]",
+      "Svanir Shaman Chief \xc2\xbb WP [&BMIDAAA=] | Wayfarer Foothills!",
+      10, 5, EventExpansion::Core, EventCategory::WorldBoss,
+      120, 15, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 2 — Svanir Shaman Chief  [FILL — world boss] ─────────────────────────
-    // 2h cycle, 0:15 UTC → 0:15, 2:15, 4:15… (events.json)
-    s_Events[1] = {
-        2, "Svanir Shaman Chief",
-        {MAP_WAYFARER, 0u, 0u}, 1,
-        {"[&BH4BAAA=]", nullptr, nullptr},
-        "Svanir Shaman Chief \xc2\xbb WP [&BH4BAAA=] | Wayfarer Foothills!",
-        10, 5,
-        SchedMode::Uniform, 120, 15,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Fire Elemental", "Metrica Province", 35,
+      "[&BEcAAAA=]",
+      "Fire Elemental \xc2\xbb WP [&BEcAAAA=] | Metrica Province!",
+      8, 5, EventExpansion::Core, EventCategory::WorldBoss,
+      120, 45, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 3 — Tequatl the Sunless ───────────────────────────────────────────────
-    // Irregular (events.json): 00:00, 03:00, 07:00, 11:30, 16:00, 19:00 UTC
-    s_Events[2] = {
-        3, "Tequatl the Sunless",
-        {MAP_SPARKFLY, 0u, 0u}, 1,
-        {"[&BNABAAA=]", nullptr, nullptr},
-        "Tequatl \xc2\xbb WP [&BNABAAA=] | Sparkfly Fen!",
-        15, 10,
-        SchedMode::Irregular, 0, 0,
-        {0, 180, 420, 690, 960, 1140, 0, 0}, 6
-    };
+    { "Great Jungle Wurm", "Caledon Forest", 34,
+      "[&BEEFAAA=]",
+      "Great Jungle Wurm \xc2\xbb WP [&BEEFAAA=] | Caledon Forest!",
+      15, 8, EventExpansion::Core, EventCategory::WorldBoss,
+      120, 75, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 4 — Great Jungle Wurm  [FILL — world boss] ───────────────────────────
-    // 2h cycle, 1:15 UTC → 1:15, 3:15, 5:15… (events.json)
-    s_Events[3] = {
-        4, "Great Jungle Wurm",
-        {MAP_CALEDON, 0u, 0u}, 1,
-        {"[&BEEFAAA=]", nullptr, nullptr},
-        "Great Jungle Wurm \xc2\xbb WP [&BEEFAAA=] | Caledon Forest!",
-        15, 8,
-        SchedMode::Uniform, 120, 75,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Shadow Behemoth", "Queensdale", 15,
+      "[&BPcAAAA=]",
+      "Shadow Behemoth \xc2\xbb WP [&BPcAAAA=] | Queensdale!",
+      15, 8, EventExpansion::Core, EventCategory::WorldBoss,
+      120, 105, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 5 — Karka Queen ───────────────────────────────────────────────────────
-    // Irregular (events.json): 02:00, 06:00, 10:30, 15:00, 18:00, 23:00 UTC
-    s_Events[4] = {
-        5, "Karka Queen",
-        {MAP_SOUTHSUN, 0u, 0u}, 1,
-        {"[&BNcGAAA=]", nullptr, nullptr},
-        "Karka Queen \xc2\xbb WP [&BNcGAAA=] | Southsun Cove!",
-        15, 8,
-        SchedMode::Irregular, 0, 0,
-        {120, 360, 630, 900, 1080, 1380, 0, 0}, 6
-    };
+    // ── 3-hour cycle ──────────────────────────────────────────────────────────
+    { "Megadestroyer", "Mount Maelstrom", 39,
+      "[&BM0CAAA=]",
+      "Megadestroyer \xc2\xbb WP [&BM0CAAA=] | Mount Maelstrom!",
+      15, 8, EventExpansion::Core, EventCategory::WorldBoss,
+      180, 30, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 6 — Megadestroyer  [FILL — world boss] ───────────────────────────────
-    // 3h cycle, 0:30 UTC → 0:30, 3:30, 6:30… (events.json)
-    s_Events[5] = {
-        6, "Megadestroyer",
-        {MAP_MAELSTROM, 0u, 0u}, 1,
-        {"[&BM0CAAA=]", nullptr, nullptr},
-        "Megadestroyer \xc2\xbb WP [&BM0CAAA=] | Mount Maelstrom!",
-        15, 8,
-        SchedMode::Uniform, 180, 30,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "The Shatterer", "Blazeridge Steppes", 20,
+      "[&BE4DAAA=]",
+      "The Shatterer \xc2\xbb WP [&BE4DAAA=] | Blazeridge Steppes!",
+      15, 8, EventExpansion::Core, EventCategory::WorldBoss,
+      180, 60, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 7 — Triple Trouble ────────────────────────────────────────────────────
-    // Irregular (events.json): 01:00, 04:00, 08:00, 12:30, 17:00, 20:00 UTC
-    s_Events[6] = {
-        7, "Triple Trouble",
-        {MAP_BLOODTIDE, 0u, 0u}, 1,
-        {"[&BKoBAAA=]", nullptr, nullptr},
-        "Triple Trouble \xc2\xbb WP [&BKoBAAA=] | Bloodtide Coast!",
-        25, 10,
-        SchedMode::Irregular, 0, 0,
-        {60, 240, 480, 750, 1020, 1200, 0, 0}, 6
-    };
+    { "Modniir Ulgoth", "Harathi Hinterlands", 17,
+      "[&BLAAAAA=]",
+      "Modniir Ulgoth \xc2\xbb WP [&BLAAAAA=] | Harathi Hinterlands!",
+      15, 8, EventExpansion::Core, EventCategory::WorldBoss,
+      180, 90, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 8 — The Shatterer  [FILL — world boss] ───────────────────────────────
-    // 3h cycle, 1:00 UTC → 1:00, 4:00, 7:00… (events.json)
-    s_Events[7] = {
-        8, "The Shatterer",
-        {MAP_BLAZERIDGE, 0u, 0u}, 1,
-        {"[&BE4DAAA=]", nullptr, nullptr},
-        "The Shatterer \xc2\xbb WP [&BE4DAAA=] | Blazeridge Steppes!",
-        15, 8,
-        SchedMode::Uniform, 180, 60,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Golem Mark II", "Brisban Wildlands", 54,
+      "[&BNQCAAA=]",
+      "Golem Mark II \xc2\xbb WP [&BNQCAAA=] | Brisban Wildlands!",
+      15, 8, EventExpansion::Core, EventCategory::WorldBoss,
+      180, 120, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 9 — Twisted Marionette ────────────────────────────────────────────────
-    // 2h cycle, every even hour (events.json)
-    s_Events[8] = {
-        9, "Twisted Marionette",
-        {MAP_EYE_NORTH, 0u, 0u}, 1,
-        {"[&BAkMAAA=]", nullptr, nullptr},
-        "Twisted Marionette \xc2\xbb WP [&BAkMAAA=] | Eye of the North!",
-        20, 10,
-        SchedMode::Uniform, 120, 0,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Claw of Jormag", "Frostgorge Sound", 30,
+      "[&BHoCAAA=]",
+      "Claw of Jormag \xc2\xbb WP [&BHoCAAA=] | Frostgorge Sound!",
+      20, 10, EventExpansion::Core, EventCategory::WorldBoss,
+      180, 150, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 10 — Fire Elemental  [FILL — world boss] ─────────────────────────────
-    // 2h cycle, 0:45 UTC → 0:45, 2:45, 4:45… (events.json)
-    s_Events[9] = {
-        10, "Fire Elemental",
-        {MAP_METRICA, 0u, 0u}, 1,
-        {"[&BEcAAAA=]", nullptr, nullptr},
-        "Fire Elemental \xc2\xbb WP [&BEcAAAA=] | Metrica Province!",
-        8, 5,
-        SchedMode::Uniform, 120, 45,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    // ── Irregular daily schedule ───────────────────────────────────────────────
+    { "Tequatl the Sunless", "Sparkfly Fen", 53,
+      "[&BNABAAA=]",
+      "Tequatl \xc2\xbb WP [&BNABAAA=] | Sparkfly Fen!",
+      15, 10, EventExpansion::Core, EventCategory::WorldBoss,
+      0, 0, {0, 180, 420, 690, 960, 1140, 0, 0}, 6 },
 
-    // ── 11 — Night and the Enemy ──────────────────────────────────────────────
-    // Verdant Brink night meta.  events.json lists night boss phase at :10.
-    // Verify: VB 2h cycle — daytime ~0:00, night phase ~0:10 UTC (0:10, 2:10…)
-    s_Events[10] = {
-        11, "Night and the Enemy",
-        {MAP_VERDANT, 0u, 0u}, 1,
-        {"[&BAgIAAA=]", nullptr, nullptr},
-        "Night and the Enemy \xc2\xbb WP [&BAgIAAA=] | Verdant Brink!",
-        30, 10,
-        SchedMode::Uniform, 120, 10,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Triple Trouble", "Bloodtide Coast", 73,
+      "[&BKoBAAA=]",
+      "Triple Trouble \xc2\xbb WP [&BKoBAAA=] | Bloodtide Coast!",
+      25, 10, EventExpansion::Core, EventCategory::WorldBoss,
+      0, 0, {60, 240, 480, 750, 1020, 1200, 0, 0}, 6 },
 
-    // ── 12 — Battle in Tarir ─────────────────────────────────────────────────
-    // 2h cycle, 1:00 UTC → 1:00, 3:00… [C] WP confirmed
-    s_Events[11] = {
-        12, "Battle in Tarir",
-        {MAP_AURIC, 0u, 0u}, 1,
-        {"[&BN0HAAA=]", nullptr, nullptr},
-        "Battle in Tarir \xc2\xbb WP [&BN0HAAA=] | Auric Basin!",
-        25, 10,
-        SchedMode::Uniform, 120, 60,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Taidha Covington", "Bloodtide Coast", 73,
+      "[&BKgBAAA=]",
+      "Taidha Covington \xc2\xbb WP [&BKgBAAA=] | Bloodtide Coast!",
+      15, 8, EventExpansion::Core, EventCategory::WorldBoss,
+      180, 0, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 13 — Chak Gerent ─────────────────────────────────────────────────────
-    // 2h cycle, 0:30 UTC → 0:30, 2:30…
-    s_Events[12] = {
-        13, "Chak Gerent",
-        {MAP_TANGLED, 0u, 0u}, 1,
-        {"[&BPUHAAA=]", nullptr, nullptr},
-        "Chak Gerent \xc2\xbb WP [&BPUHAAA=] | Tangled Depths!",
-        20, 10,
-        SchedMode::Uniform, 120, 30,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Karka Queen", "Southsun Cove", 873,
+      "[&BNcGAAA=]",
+      "Karka Queen \xc2\xbb WP [&BNcGAAA=] | Southsun Cove!",
+      15, 8, EventExpansion::Core, EventCategory::WorldBoss,
+      0, 0, {120, 360, 630, 900, 1080, 1380, 0, 0}, 6 },
+};
+int g_WorldBossCount = (int)(sizeof(g_WorldBosses) / sizeof(g_WorldBosses[0]));
 
-    // ── 14 — Ley-Line Anomaly ─────────────────────────────────────────────────
-    // Rotates across 3 maps every 2h at :20. Show all 3 WPs; commander picks active.
-    // Timberline: 0:20, 6:20, 12:20, 18:20  |  Iron Marches: 2:20, 8:20…
-    // Gendarran: 4:20, 10:20…  → combined any-map occurrence every 2h at :20
-    s_Events[13] = {
-        14, "Ley-Line Anomaly",
-        {MAP_TIMBERLINE, MAP_IRON_MARCHES, MAP_GENDARRAN}, 3,
-        {"[&BEwCAAA=]", "[&BOcBAAA=]", "[&BOQAAAA=]"},
-        "Ley-Line Anomaly \xc2\xbb Check active map: "
-        "Timberline [&BEwCAAA=] | Iron Marches [&BOcBAAA=] | Gendarran [&BOQAAAA=]",
-        10, 5,
-        SchedMode::Uniform, 120, 20,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+// ── Meta event table ──────────────────────────────────────────────────────────
+MetaEvent g_Metas[] = {
+    // ── Heart of Thorns ───────────────────────────────────────────────────────
+    { "Night Bosses", "Verdant Brink", 1042,
+      "[&BAgIAAA=]",
+      "Night Bosses \xc2\xbb WP [&BAgIAAA=] | Verdant Brink!",
+      30, 10, EventExpansion::HoT, EventCategory::Meta,
+      120, 10, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 15 — Choya Pinata / Casino Blitz ─────────────────────────────────────
-    // 2h cycle, 0:21 UTC (events.json). Crystal Oasis, Domain of Vabbi staging area.
-    s_Events[14] = {
-        15, "Choya Pinata",
-        {MAP_VABBI, 0u, 0u}, 1,
-        {"[&BLsKAAA=]", nullptr, nullptr},
-        "Choya Pinata / Casino Blitz \xc2\xbb WP [&BLsKAAA=] | Crystal Oasis!",
-        15, 8,
-        SchedMode::Uniform, 120, 21,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Chak Gerent", "Tangled Depths", 1045,
+      "[&BPUHAAA=]",
+      "Chak Gerent \xc2\xbb WP [&BPUHAAA=] | Tangled Depths!",
+      20, 10, EventExpansion::HoT, EventCategory::Meta,
+      120, 30, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 16 — The Path to Ascension ───────────────────────────────────────────
-    // 2h cycle, 1:30 UTC → 1:30, 3:30… (events.json, corrected from :00)
-    s_Events[15] = {
-        16, "The Path to Ascension",
-        {MAP_ELON, 0u, 0u}, 1,
-        {"[&BFMKAAA=]", nullptr, nullptr},
-        "The Path to Ascension \xc2\xbb WP [&BFMKAAA=] | Elon Riverlands!",
-        20, 10,
-        SchedMode::Uniform, 120, 90,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Octovine", "Auric Basin", 1043,
+      "[&BN0HAAA=]",
+      "Octovine (Battle in Tarir) \xc2\xbb WP [&BN0HAAA=] | Auric Basin!",
+      20, 10, EventExpansion::HoT, EventCategory::Meta,
+      120, 60, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 17 — Junundu Rising ──────────────────────────────────────────────────
-    // 2h cycle, 0:30 UTC → 0:30, 2:30… (events.json)
-    s_Events[16] = {
-        17, "Junundu Rising",
-        {MAP_DESOLATION, 0u, 0u}, 1,
-        {"[&BMEKAAA=]", nullptr, nullptr},
-        "Junundu Rising \xc2\xbb WP [&BMEKAAA=] | The Desolation!",
-        20, 10,
-        SchedMode::Uniform, 120, 30,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Dragon's Stand", "Dragon's Stand", 1041,
+      "[&BBAIAAA=]",
+      "Dragon's Stand \xc2\xbb WP [&BBAIAAA=] | Dragon's Stand!",
+      90, 15, EventExpansion::HoT, EventCategory::Meta,
+      120, 90, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 18 — Maws of Torment  [FILL — PoF world boss] ────────────────────────
-    // The Desolation. 2h cycle, 1:00 UTC → 1:00, 3:00, 5:00… (events.json)
-    s_Events[17] = {
-        18, "Maws of Torment",
-        {MAP_DESOLATION, 0u, 0u}, 1,
-        {"[&BKMKAAA=]", nullptr, nullptr},
-        "Maws of Torment \xc2\xbb WP [&BKMKAAA=] | The Desolation!",
-        15, 8,
-        SchedMode::Uniform, 120, 60,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    // ── Living World Season 3 ─────────────────────────────────────────────────
+    { "Saidra's Haven", "Lake Doric", 0,
+      "[&BK0JAAA=]",
+      "Saidra's Haven \xc2\xbb WP [&BK0JAAA=] | Lake Doric!",
+      45, 10, EventExpansion::HoT, EventCategory::Meta,
+      120, 60, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 19 — Forged with Fire ────────────────────────────────────────────────
-    // 2h cycle, even hours 0:00, 2:00… Domain of Vabbi meta chain start.
-    s_Events[18] = {
-        19, "Forged with Fire",
-        {MAP_VABBI, 0u, 0u}, 1,
-        {"[&BO0KAAA=]", nullptr, nullptr},
-        "Forged with Fire \xc2\xbb WP [&BO0KAAA=] | Domain of Vabbi!",
-        15, 8,
-        SchedMode::Uniform, 120, 0,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "New Loamhurst", "Lake Doric", 0,
+      "[&BLQJAAA=]",
+      "New Loamhurst \xc2\xbb WP [&BLQJAAA=] | Lake Doric!",
+      45, 10, EventExpansion::HoT, EventCategory::Meta,
+      120, 105, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 20 — Serpents' Ire  [FILL — PoF event] ───────────────────────────────
-    // Domain of Vabbi. 2h cycle, 0:30 UTC → 0:30, 2:30… (events.json)
-    s_Events[19] = {
-        20, "Serpents' Ire",
-        {MAP_VABBI, 0u, 0u}, 1,
-        {"[&BHQKAAA=]", nullptr, nullptr},
-        "Serpents' Ire \xc2\xbb WP [&BHQKAAA=] | Domain of Vabbi!",
-        20, 10,
-        SchedMode::Uniform, 120, 30,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Noran's Homestead", "Lake Doric", 0,
+      "[&BK8JAAA=]",
+      "Noran's Homestead \xc2\xbb WP [&BK8JAAA=] | Lake Doric!",
+      30, 10, EventExpansion::HoT, EventCategory::Meta,
+      120, 30, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 21 — Palawadan, Jewel of Istan ───────────────────────────────────────
-    // 2h cycle, 1:45 UTC → 1:45, 3:45… (events.json, corrected from :00)
-    s_Events[20] = {
-        21, "Palawadan, Jewel of Istan",
-        {MAP_ISTAN, 0u, 0u}, 1,
-        {"[&BAkLAAA=]", nullptr, nullptr},
-        "Palawadan \xc2\xbb WP [&BAkLAAA=] | Domain of Istan!",
-        15, 8,
-        SchedMode::Uniform, 120, 105,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    // ── Path of Fire ──────────────────────────────────────────────────────────
+    { "Casino Blitz", "Crystal Oasis", 1210,
+      "[&BLsKAAA=]",
+      "Casino Blitz \xc2\xbb WP [&BLsKAAA=] | Crystal Oasis!",
+      15, 8, EventExpansion::PoF, EventCategory::Meta,
+      120, 5, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 22 — Death-Branded Shatterer ─────────────────────────────────────────
-    // 2h cycle, 1:15 UTC → 1:15, 3:15… (events.json confirmed)
-    s_Events[21] = {
-        22, "Death-Branded Shatterer",
-        {MAP_JAHAI, 0u, 0u}, 1,
-        {"[&BJMLAAA=]", nullptr, nullptr},
-        "Death-Branded Shatterer \xc2\xbb WP [&BJMLAAA=] | Jahai Bluffs!",
-        15, 8,
-        SchedMode::Uniform, 120, 75,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Buried Treasure", "Desert Highlands", 0,
+      "[&BGsKAAA=]",
+      "Buried Treasure \xc2\xbb WP [&BGsKAAA=] | Desert Highlands!",
+      20, 8, EventExpansion::PoF, EventCategory::Meta,
+      120, 60, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 23 — The Oil Floes ───────────────────────────────────────────────────
-    // Sandswept Isles. 2h cycle, 0:45 UTC → 0:45, 2:45… (events.json, corrected from :00)
-    s_Events[22] = {
-        23, "The Oil Floes",
-        {MAP_SANDSWEPT, 0u, 0u}, 1,
-        {"[&BJ4KAAA=]", nullptr, nullptr},
-        "The Oil Floes \xc2\xbb WP [&BJ4KAAA=] | Sandswept Isles!",
-        20, 10,
-        SchedMode::Uniform, 120, 45,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Path to Ascension", "Elon Riverlands", 1228,
+      "[&BFMKAAA=]",
+      "Path to Ascension \xc2\xbb WP [&BFMKAAA=] | Elon Riverlands!",
+      25, 10, EventExpansion::PoF, EventCategory::Meta,
+      120, 90, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 24 — Flame Legion Effigy ─────────────────────────────────────────────
-    // Grothmar Valley phase 1. 2h cycle, 0:10 UTC → 0:10, 2:10… (events.json, corrected from :00)
-    s_Events[23] = {
-        24, "Flame Legion Effigy",
-        {MAP_GROTHMAR, 0u, 0u}, 1,
-        {"[&BA4MAAA=]", nullptr, nullptr},
-        "Flame Legion Effigy \xc2\xbb WP [&BA4MAAA=] | Grothmar Valley!",
-        12, 5,
-        SchedMode::Uniform, 120, 10,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Doppelganger", "Elon Riverlands", 1228,
+      "[&BFMKAAA=]",
+      "Doppelganger \xc2\xbb WP [&BFMKAAA=] | Elon Riverlands!",
+      20, 10, EventExpansion::PoF, EventCategory::Meta,
+      120, 115, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 25 — Doomlore Shrine ─────────────────────────────────────────────────
-    // Grothmar Valley phase 2. 2h cycle, 0:40 UTC → 0:40, 2:40… (events.json, corrected from :15)
-    s_Events[24] = {
-        25, "Doomlore Shrine",
-        {MAP_GROTHMAR, 0u, 0u}, 1,
-        {"[&BA4MAAA=]", nullptr, nullptr},
-        "Doomlore Shrine \xc2\xbb WP [&BA4MAAA=] | Grothmar Valley!",
-        15, 5,
-        SchedMode::Uniform, 120, 40,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Junundu Rising", "The Desolation", 1226,
+      "[&BMEKAAA=]",
+      "Junundu Rising \xc2\xbb WP [&BMEKAAA=] | The Desolation!",
+      20, 8, EventExpansion::PoF, EventCategory::Meta,
+      60, 30, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 26 — Ooze Pits ───────────────────────────────────────────────────────
-    // Grothmar Valley phase 3. 2h cycle, 1:05 UTC → 1:05, 3:05… (events.json, corrected from :30)
-    s_Events[25] = {
-        26, "Ooze Pits",
-        {MAP_GROTHMAR, 0u, 0u}, 1,
-        {"[&BPgLAAA=]", nullptr, nullptr},
-        "Ooze Pits \xc2\xbb WP [&BPgLAAA=] | Grothmar Valley!",
-        15, 5,
-        SchedMode::Uniform, 120, 65,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Maws of Torment", "The Desolation", 1226,
+      "[&BKMKAAA=]",
+      "Maws of Torment \xc2\xbb WP [&BKMKAAA=] | The Desolation!",
+      15, 8, EventExpansion::PoF, EventCategory::Meta,
+      120, 60, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 27 — Shadow Behemoth  [FILL — world boss] ────────────────────────────
-    // Queensdale. 2h cycle, 1:45 UTC → 1:45, 3:45… (events.json)
-    s_Events[26] = {
-        27, "Shadow Behemoth",
-        {MAP_QUEENSDALE, 0u, 0u}, 1,
-        {"[&BPcAAAA=]", nullptr, nullptr},
-        "Shadow Behemoth \xc2\xbb WP [&BPcAAAA=] | Queensdale!",
-        15, 8,
-        SchedMode::Uniform, 120, 105,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Forged with Fire", "Domain of Vabbi", 1248,
+      "[&BO0KAAA=]",
+      "Forged with Fire \xc2\xbb WP [&BO0KAAA=] | Domain of Vabbi!",
+      20, 8, EventExpansion::PoF, EventCategory::Meta,
+      60, 0, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 28 — Drakkar ─────────────────────────────────────────────────────────
-    // Bjora Marches. 2h cycle, 1:20 UTC → 1:20, 3:20… (events.json, corrected from :90)
-    s_Events[27] = {
-        28, "Drakkar",
-        {MAP_BJORA, 0u, 0u}, 1,
-        {"[&BDkMAAA=]", nullptr, nullptr},
-        "Drakkar \xc2\xbb WP [&BDkMAAA=] | Bjora Marches!",
-        20, 10,
-        SchedMode::Uniform, 120, 80,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Serpent's Ire", "Domain of Vabbi", 1248,
+      "[&BHQKAAA=]",
+      "Serpent's Ire \xc2\xbb WP [&BHQKAAA=] | Domain of Vabbi!",
+      20, 10, EventExpansion::PoF, EventCategory::Meta,
+      120, 30, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 29 — Dragonstorm ─────────────────────────────────────────────────────
-    // Eye of the North instanced. 2h cycle, 1:00 UTC → 1:00, 3:00… (events.json)
-    s_Events[28] = {
-        29, "Dragonstorm",
-        {MAP_EYE_NORTH, 0u, 0u}, 1,
-        {"[&BAkMAAA=]", nullptr, nullptr},
-        "Dragonstorm \xc2\xbb WP [&BAkMAAA=] | Eye of the North!",
-        20, 10,
-        SchedMode::Uniform, 120, 60,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Palawadan", "Domain of Istan", 1263,
+      "[&BAkLAAA=]",
+      "Palawadan \xc2\xbb WP [&BAkLAAA=] | Domain of Istan!",
+      15, 8, EventExpansion::PoF, EventCategory::Meta,
+      120, 105, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 30 — Adolescent Leviathan ────────────────────────────────────────────
-    // New Kaineng City. Approximate schedule, 2h cycle :30.
-    s_Events[29] = {
-        30, "Adolescent Leviathan",
-        {MAP_NEW_KAINENG, 0u, 0u}, 1,
-        {"[&BOANAAA=]", nullptr, nullptr},
-        "Adolescent Leviathan \xc2\xbb WP [&BOANAAA=] | New Kaineng City!",
-        15, 8,
-        SchedMode::Uniform, 120, 30,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "DB Shatterer", "Jahai Bluffs", 1301,
+      "[&BJMLAAA=]",
+      "Death-Branded Shatterer \xc2\xbb WP [&BJMLAAA=] | Jahai Bluffs!",
+      15, 8, EventExpansion::PoF, EventCategory::Meta,
+      120, 75, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 31 — Aetherblade Assault ─────────────────────────────────────────────
-    // Seitung Province. 2h cycle, 1:30 UTC → 1:30, 3:30… (events.json, corrected from :00)
-    s_Events[30] = {
-        31, "Aetherblade Assault",
-        {MAP_SEITUNG, 0u, 0u}, 1,
-        {"[&BGUNAAA=]", nullptr, nullptr},
-        "Aetherblade Assault \xc2\xbb WP [&BGUNAAA=] | Seitung Province!",
-        20, 10,
-        SchedMode::Uniform, 120, 90,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    // ── Icebrood Saga (incl. LW4/LW5) ────────────────────────────────────────
+    { "Thunderhead Keep", "Thunderhead Peaks", 1310,
+      "[&BLsLAAA=]",
+      "Thunderhead Keep \xc2\xbb WP [&BLsLAAA=] | Thunderhead Peaks!",
+      20, 10, EventExpansion::IBS, EventCategory::Meta,
+      120, 105, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 32 — Kaineng Blackout ────────────────────────────────────────────────
-    // [C] Confirmed: 2h, even hours. WP [&BBkNAAA=] (events.json confirmed)
-    s_Events[31] = {
-        32, "Kaineng Blackout",
-        {MAP_NEW_KAINENG, 0u, 0u}, 1,
-        {"[&BBkNAAA=]", nullptr, nullptr},
-        "Kaineng Blackout \xc2\xbb WP [&BBkNAAA=] | New Kaineng City!",
-        25, 10,
-        SchedMode::Uniform, 120, 0,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Oil Floes", "Thunderhead Peaks", 1310,
+      "[&BKYLAAA=]",
+      "The Oil Floes \xc2\xbb WP [&BKYLAAA=] | Thunderhead Peaks!",
+      20, 8, EventExpansion::IBS, EventCategory::Meta,
+      120, 45, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 33 — Assault on Fort Aspenwood ───────────────────────────────────────
-    // Echovald Wilds. 2h cycle, 1:40 UTC → 1:40, 3:40… (events.json, corrected from :60)
-    s_Events[32] = {
-        33, "Assault on Fort Aspenwood",
-        {MAP_ECHOVALD, 0u, 0u}, 1,
-        {"[&BPkMAAA=]", nullptr, nullptr},
-        "Assault on Fort Aspenwood \xc2\xbb WP [&BPkMAAA=] | Echovald Wilds!",
-        25, 10,
-        SchedMode::Uniform, 120, 100,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Metal Concert", "Grothmar Valley", 1330,
+      "[&BPgLAAA=]",
+      "Metal Concert \xc2\xbb WP [&BPgLAAA=] | Grothmar Valley!",
+      20, 10, EventExpansion::IBS, EventCategory::Meta,
+      120, 100, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 34 — The Gang War of Echovald ────────────────────────────────────────
-    // Echovald Wilds. 2h cycle, 0:30 UTC → 0:30, 2:30… (events.json, corrected from :00)
-    s_Events[33] = {
-        34, "The Gang War of Echovald",
-        {MAP_ECHOVALD, 0u, 0u}, 1,
-        {"[&BMwMAAA=]", nullptr, nullptr},
-        "Gang War of Echovald \xc2\xbb WP [&BMwMAAA=] | Echovald Wilds!",
-        20, 8,
-        SchedMode::Uniform, 120, 30,
-        {0,0,0,0,0,0,0,0}, 0
-    };
+    { "Drakkar", "Bjora Marches", 1343,
+      "[&BDkMAAA=]",
+      "Drakkar \xc2\xbb WP [&BDkMAAA=] | Bjora Marches!",
+      20, 10, EventExpansion::IBS, EventCategory::Meta,
+      120, 80, {0,0,0,0,0,0,0,0}, 0 },
 
-    // ── 35 — The Battle for the Jade Sea ─────────────────────────────────────
-    // [C] Confirmed: 2h, odd hours. WP [&BKIMAAA=] (events.json confirmed)
-    s_Events[34] = {
-        35, "The Battle for the Jade Sea",
-        {MAP_DRAGONS_END, 0u, 0u}, 1,
-        {"[&BKIMAAA=]", nullptr, nullptr},
-        "Battle for the Jade Sea \xc2\xbb WP [&BKIMAAA=] | Dragon's End!",
-        30, 15,
-        SchedMode::Uniform, 120, 60,
-        {0,0,0,0,0,0,0,0}, 0
-    };
-}
+    { "Twisted Marionette", "Lion's Arch Aerodrome", 0,
+      "[&BAkMAAA=]",
+      "Twisted Marionette \xc2\xbb WP [&BAkMAAA=] | Lion's Arch Aerodrome!",
+      20, 10, EventExpansion::IBS, EventCategory::Meta,
+      120, 0, {0,0,0,0,0,0,0,0}, 0 },
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  TIMING ENGINE
-// ═════════════════════════════════════════════════════════════════════════════
+    { "Dragonstorm", "Drizzlewood Coast", 0,
+      "[&BAkMAAA=]",
+      "Dragonstorm \xc2\xbb WP [&BAkMAAA=] | Lion's Arch Aerodrome!",
+      20, 10, EventExpansion::IBS, EventCategory::Meta,
+      120, 60, {0,0,0,0,0,0,0,0}, 0 },
+
+    // ── End of Dragons ────────────────────────────────────────────────────────
+    { "Dragon's End", "Dragon's End", 1422,
+      "[&BKIMAAA=]",
+      "Dragon's End \xc2\xbb WP [&BKIMAAA=] | Dragon's End!",
+      30, 15, EventExpansion::EoD, EventCategory::Meta,
+      120, 60, {0,0,0,0,0,0,0,0}, 0 },
+
+    { "Aetherblade Assault", "Seitung Province", 1442,
+      "[&BGUNAAA=]",
+      "Aetherblade Assault \xc2\xbb WP [&BGUNAAA=] | Seitung Province!",
+      20, 10, EventExpansion::EoD, EventCategory::Meta,
+      120, 90, {0,0,0,0,0,0,0,0}, 0 },
+
+    { "Kaineng Blackout", "New Kaineng City", 1438,
+      "[&BBkNAAA=]",
+      "Kaineng Blackout \xc2\xbb WP [&BBkNAAA=] | New Kaineng City!",
+      25, 10, EventExpansion::EoD, EventCategory::Meta,
+      120, 0, {0,0,0,0,0,0,0,0}, 0 },
+
+    { "Gang War", "The Echovald Wilds", 1452,
+      "[&BMwMAAA=]",
+      "Gang War \xc2\xbb WP [&BMwMAAA=] | The Echovald Wilds!",
+      20, 8, EventExpansion::EoD, EventCategory::Meta,
+      120, 30, {0,0,0,0,0,0,0,0}, 0 },
+
+    { "Aspenwood", "The Echovald Wilds", 1452,
+      "[&BPkMAAA=]",
+      "Aspenwood \xc2\xbb WP [&BPkMAAA=] | The Echovald Wilds!",
+      20, 8, EventExpansion::EoD, EventCategory::Meta,
+      120, 100, {0,0,0,0,0,0,0,0}, 0 },
+
+    // ── Secrets of the Obscure ────────────────────────────────────────────────
+    { "Wizard's Tower", "Skywatch Archipelago", 1510,
+      "[&BL4NAAA=]",
+      "Wizard's Tower \xc2\xbb WP [&BL4NAAA=] | Skywatch Archipelago!",
+      20, 10, EventExpansion::SotO, EventCategory::Meta,
+      120, 60, {0,0,0,0,0,0,0,0}, 0 },
+
+    { "Defense of Amnytas", "Amnytas", 1517,
+      "[&BDQOAAA=]",
+      "Defense of Amnytas \xc2\xbb WP [&BDQOAAA=] | Amnytas!",
+      20, 10, EventExpansion::SotO, EventCategory::Meta,
+      120, 0, {0,0,0,0,0,0,0,0}, 0 },
+
+    { "Outer Nayos", "Outer Nayos", 0,
+      "[&BB8OAAA=]",
+      "Outer Nayos Convergence \xc2\xbb WP [&BB8OAAA=] | Outer Nayos!",
+      10, 8, EventExpansion::SotO, EventCategory::Meta,
+      180, 90, {0,0,0,0,0,0,0,0}, 0 },
+
+    // ── Janthir Wilds ─────────────────────────────────────────────────────────
+    { "Of Mists and Monsters", "Janthir Syntri", 0,
+      "[&BCoPAAA=]",
+      "Of Mists and Monsters \xc2\xbb WP [&BCoPAAA=] | Janthir Syntri!",
+      25, 10, EventExpansion::JW, EventCategory::Meta,
+      120, 30, {0,0,0,0,0,0,0,0}, 0 },
+
+    { "A Titanic Voyage", "Bava Nisos", 0,
+      "[&BGEPAAA=]",
+      "A Titanic Voyage \xc2\xbb WP [&BGEPAAA=] | Bava Nisos!",
+      30, 10, EventExpansion::JW, EventCategory::Meta,
+      120, 80, {0,0,0,0,0,0,0,0}, 0 },
+
+    { "Mount Balrior", "Mount Balrior", 0,
+      "[&BK4OAAA=]",
+      "Mount Balrior Convergence \xc2\xbb WP [&BK4OAAA=] | Mount Balrior!",
+      10, 8, EventExpansion::JW, EventCategory::Meta,
+      180, 0, {0,0,0,0,0,0,0,0}, 0 },
+
+    // ── Visions of Eternity ───────────────────────────────────────────────────
+    { "Hammerhart Rumble!", "Shipwreck Strand", 0,
+      "[&BJEPAAA=]",
+      "Hammerhart Rumble! \xc2\xbb WP [&BJEPAAA=] | Shipwreck Strand!",
+      15, 8, EventExpansion::VoE, EventCategory::Meta,
+      120, 40, {0,0,0,0,0,0,0,0}, 0 },
+
+    { "Secrets of the Weald", "Starlit Weald", 0,
+      "[&BJ4PAAA=]",
+      "Secrets of the Weald \xc2\xbb WP [&BJ4PAAA=] | Starlit Weald!",
+      20, 10, EventExpansion::VoE, EventCategory::Meta,
+      120, 105, {0,0,0,0,0,0,0,0}, 0 },
+};
+int g_MetaCount = (int)(sizeof(g_Metas) / sizeof(g_Metas[0]));
+
+void EventsInit() {}
+
+// ── Timing engine ─────────────────────────────────────────────────────────────
 
 static int SecsIntoDay(time_t t)
 {
@@ -510,13 +344,12 @@ static int SecsIntoDay(time_t t)
 
 static int UniformSecsUntilNext(const MetaEvent& ev, time_t nowUtc)
 {
-    int s       = SecsIntoDay(nowUtc);
-    int cycSec  = ev.cycleMinutes  * 60;
-    int offSec  = (ev.offsetMinutes * 60) % cycSec;
-    int durSec  = ev.durationMinutes * 60;
+    int s      = SecsIntoDay(nowUtc);
+    int cycSec = ev.intervalMinutes * 60;
+    int offSec = (ev.offsetMinutes * 60) % cycSec;
+    int durSec = ev.durationMinutes * 60;
 
     int posInCycle = ((s - offSec) % cycSec + cycSec) % cycSec;
-
     if (posInCycle < durSec)
         return 0;
     return cycSec - posInCycle;
@@ -541,7 +374,7 @@ static int IrregSecsUntilNext(const MetaEvent& ev, time_t nowUtc)
 
 int SecondsUntilNext(const MetaEvent& ev, time_t nowUtc)
 {
-    if (ev.schedMode == SchedMode::Uniform)
+    if (ev.intervalMinutes > 0)
         return UniformSecsUntilNext(ev, nowUtc);
     return IrregSecsUntilNext(ev, nowUtc);
 }
@@ -551,14 +384,14 @@ int SecondsSinceLastStart(const MetaEvent& ev, time_t nowUtc)
     int until = SecondsUntilNext(ev, nowUtc);
     if (until == 0) {
         int s = SecsIntoDay(nowUtc);
-        if (ev.schedMode == SchedMode::Uniform) {
-            int cycSec = ev.cycleMinutes * 60;
+        if (ev.intervalMinutes > 0) {
+            int cycSec = ev.intervalMinutes * 60;
             int offSec = (ev.offsetMinutes * 60) % cycSec;
             return ((s - offSec) % cycSec + cycSec) % cycSec;
         } else {
             int best = -1;
             for (int i = 0; i < ev.irregCount; i++) {
-                int t = ev.irregTimes[i] * 60;
+                int t   = ev.irregTimes[i] * 60;
                 int age = (s - t + 86400) % 86400;
                 if (age <= ev.durationMinutes * 60 && (best < 0 || age < best))
                     best = age;
@@ -585,24 +418,9 @@ time_t NextOccurrenceAfter(const MetaEvent& ev, time_t notBefore)
     return notBefore + 86400;
 }
 
-time_t ComputeLoopEndTime(int startIdx, time_t nowUtc)
-{
-    time_t cursor = nowUtc;
-    for (int i = 0; i < META_EVENT_COUNT; i++) {
-        int idx           = (startIdx + i) % META_EVENT_COUNT;
-        const MetaEvent& ev = g_Events[idx];
-        time_t start      = NextOccurrenceAfter(ev, cursor);
-        cursor            = start + (time_t)(ev.durationMinutes * 60);
-    }
-    return cursor;
-}
-
 bool IsEventMap(const MetaEvent& ev, uint32_t mapId)
 {
-    for (int i = 0; i < ev.mapIdCount; i++)
-        if (ev.mapIds[i] == mapId)
-            return true;
-    return false;
+    return ev.mapId == mapId;
 }
 
 int GapSeconds(const MetaEvent& evA, time_t aStart, const MetaEvent& evB)
@@ -613,24 +431,22 @@ int GapSeconds(const MetaEvent& evA, time_t aStart, const MetaEvent& evB)
     return gap < 0 ? 0 : gap;
 }
 
-void ComputeLoopSchedule(int startIdx, time_t fromTime,
-                         ScheduledOccurrence out[META_EVENT_COUNT])
+void ComputePlanSchedule(const int* plan, int planCount, time_t fromTime,
+                         ScheduledOccurrence* out)
 {
     time_t cursor  = fromTime;
     time_t prevEnd = fromTime;
 
-    for (int i = 0; i < META_EVENT_COUNT; i++) {
-        int idx           = (startIdx + i) % META_EVENT_COUNT;
-        const MetaEvent& ev = g_Events[idx];
+    for (int i = 0; i < planCount; i++) {
+        const MetaEvent& ev = g_Metas[plan[i]];
+        time_t start  = NextOccurrenceAfter(ev, cursor);
+        time_t end    = start + (time_t)(ev.durationMinutes * 60);
+        int    gap    = (int)(start - prevEnd);
 
-        time_t start      = NextOccurrenceAfter(ev, cursor);
-        time_t end        = start + (time_t)(ev.durationMinutes * 60);
-        int    gap        = (int)(start - prevEnd);
-
-        out[i].eventIdx   = idx;
-        out[i].startTime  = start;
-        out[i].endTime    = end;
-        out[i].gapBefore  = gap < 0 ? 0 : gap;
+        out[i].eventIdx  = plan[i];
+        out[i].startTime = start;
+        out[i].endTime   = end;
+        out[i].gapBefore = gap < 0 ? 0 : gap;
 
         prevEnd = end;
         cursor  = end;

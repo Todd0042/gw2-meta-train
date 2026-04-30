@@ -108,7 +108,7 @@ static void OnOptions() { UIRenderOptions(); }
 static void OnToggleWindow(const char* /*id*/, bool isRelease)
 {
     if (isRelease) return;
-    std::lock_guard<std::mutex> lk(g_StateMutex);
+    CritLock lk(&g_StateMutex);
     g_State.windowOpen = !g_State.windowOpen;
 }
 
@@ -128,7 +128,7 @@ static void OnMumble(void* eventArgs)
     if (newMap == 0) return;
 
     {
-        std::lock_guard<std::mutex> lk(g_StateMutex);
+        CritLock lk(&g_StateMutex);
         if (g_State.currentMapId == newMap) return; // no change
         g_State.currentMapId = newMap;
     }
