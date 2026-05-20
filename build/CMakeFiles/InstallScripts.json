@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/todd/gw2-meta-train/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

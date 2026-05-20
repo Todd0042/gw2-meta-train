@@ -1,3 +1,0 @@
-/usr/bin/cmake -E rm -f CMakeFiles/MetaTrain.dir/objects.a
-/usr/bin/x86_64-w64-mingw32-ar qc CMakeFiles/MetaTrain.dir/objects.a @CMakeFiles/MetaTrain.dir/objects1.rsp
-/usr/bin/x86_64-w64-mingw32-g++ -O3 -DNDEBUG -shared -o MetaTrain.dll -Wl,--out-implib,libMetaTrain.dll.a -Wl,--major-image-version,0,--minor-image-version,0 -Wl,--whole-archive CMakeFiles/MetaTrain.dir/objects.a -Wl,--no-whole-archive @CMakeFiles/MetaTrain.dir/linkLibs.rsp

@@ -159,7 +159,7 @@ typedef struct AddonAPI {
 } AddonAPI_t;
 
 typedef struct AddonDefinition {
-    int             Signature;
+    unsigned int    Signature;
     int             APIVersion;
     const char*     Name;
     AddonVersion_t  Version;

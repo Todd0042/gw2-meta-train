@@ -6,6 +6,21 @@
 #include <windows.h>
 #include <cstdio>
 
+#define NEXUS_API_VERSION 6
+
+typedef struct MumbleIdentity {
+    char     Name[20];
+    uint32_t Profession;
+    uint32_t Specialization;
+    uint32_t Race;
+    uint32_t MapID;
+    uint32_t WorldID;
+    uint32_t TeamColorID;
+    bool     IsCommander;
+    float    FOV;
+    uint32_t UISize;
+} MumbleIdentity;
+
 // ── global API handle ─────────────────────────────────────────────────────
 AddonAPI_t* APIDefs    = nullptr;
 Texture_t*  g_AddonIcon = nullptr;
@@ -67,7 +82,7 @@ static void AddonLoad(AddonAPI_t* api)
         "METATRAIN_ICON", (void*)icon_png, (uint64_t)icon_png_len);
 
     // Subscribe to map-change events (Lessons_Learned §9: filter garbage names)
-    APIDefs->Events_Subscribe(EV_MUMBLE_IDENTITY_UPDATED, OnMumble);
+    APIDefs->Events_Subscribe("EV_MUMBLE_IDENTITY_UPDATED", OnMumble);
 
     // Register render callbacks
     APIDefs->GUI_Register(RT_Render,        OnRender);
@@ -78,7 +93,7 @@ static void AddonLoad(AddonAPI_t* api)
     APIDefs->QuickAccess_Add("QA_METATRAIN", "METATRAIN_ICON", "METATRAIN_ICON",
                              "KB_METATRAIN_TOGGLE", "Meta Train Commander");
 
-    APIDefs->Log(LOGL_INFO, "MetaTrain", "Meta Train Commander loaded.");
+    APIDefs->Log_S(LOGL_INFO, "MetaTrain", "Meta Train Commander loaded.");
 }
 
 // ── AddonUnload ───────────────────────────────────────────────────────────
@@ -86,7 +101,7 @@ static void AddonUnload()
 {
     if (!APIDefs) return;
 
-    APIDefs->Events_Unsubscribe(EV_MUMBLE_IDENTITY_UPDATED, OnMumble);
+    APIDefs->Events_Unsubscribe("EV_MUMBLE_IDENTITY_UPDATED", OnMumble);
     APIDefs->GUI_Deregister(OnRender);
     APIDefs->GUI_Deregister(OnOptions);
     APIDefs->QuickAccess_Remove("QA_METATRAIN");
@@ -96,7 +111,7 @@ static void AddonUnload()
     if (addonDir)
         StateSave(addonDir);
 
-    APIDefs->Log(LOGL_INFO, "MetaTrain", "Meta Train Commander unloaded.");
+    APIDefs->Log_S(LOGL_INFO, "MetaTrain", "Meta Train Commander unloaded.");
     APIDefs = nullptr;
 }
 

@@ -1,0 +1,13 @@
+# ninja log v6
+48	1293	8009478291838552	CMakeFiles/MetaTrain.dir/src/events.cpp.obj	88675840ab58ce5a
+117	6616	8009478292530481	CMakeFiles/MetaTrain.dir/src/chat.cpp.obj	dd23535b6da3b9fa
+57	6993	8009478291928769	CMakeFiles/MetaTrain.dir/src/state.cpp.obj	e51164edc1a359a7
+137	11637	8009478292722719	CMakeFiles/MetaTrain.dir/imgui/imgui_tables.cpp.obj	135acb3a2e177d13
+129	19988	8009478292646274	CMakeFiles/MetaTrain.dir/imgui/imgui_draw.cpp.obj	938ee4d3c7bc5866
+145	23155	8009478292810709	CMakeFiles/MetaTrain.dir/imgui/imgui_widgets.cpp.obj	d02a34b2ffc33629
+123	27662	8009478292586107	CMakeFiles/MetaTrain.dir/imgui/imgui.cpp.obj	cc0fddcd6554bc7b
+49	5867	8009480408744175	CMakeFiles/MetaTrain.dir/src/ui.cpp.obj	8a5dc97c77f2f90e
+14	3837	8009480833117017	CMakeFiles/MetaTrain.dir/src/dllmain.cpp.obj	ee9a2fa043b9d585
+24	5358	8009480833223993	CMakeFiles/MetaTrain.dir/src/ui.cpp.obj	8a5dc97c77f2f90e
+5358	5756	8009480890261347	MetaTrain.dll	f21515fc382891d3
+5358	5756	8009480890261347	libMetaTrain.dll.a	f21515fc382891d3

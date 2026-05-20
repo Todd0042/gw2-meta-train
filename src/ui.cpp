@@ -154,10 +154,10 @@ void UIRender()
 {
     // One-time ImGui context setup (Lessons_Learned §1)
     if (!g_State.imguiReady) {
-        ImGui::SetCurrentContext(static_cast<ImGuiContext*>(APIDefs->ImguiContext));
+        ImGui::SetCurrentContext(static_cast<ImGuiContext*>(APIDefs->ImGuiContext));
         ImGui::SetAllocatorFunctions(
-            reinterpret_cast<void*(*)(size_t,void*)>(APIDefs->ImguiMalloc),
-            reinterpret_cast<void (*)(void*, void*)>(APIDefs->ImguiFree));
+            reinterpret_cast<void*(*)(size_t,void*)>(APIDefs->ImGuiMalloc),
+            reinterpret_cast<void (*)(void*, void*)>(APIDefs->ImGuiFree));
         g_State.imguiReady = true;
     }
 
