@@ -1,0 +1,11 @@
+build/
+*.dll
+*.dll.a
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+.claude/
+.DS_Store
+Thumbs.db
