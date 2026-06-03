@@ -9,3 +9,5 @@ build/
 .claude/
 .DS_Store
 Thumbs.db
+
+Lessons_Learned.md
